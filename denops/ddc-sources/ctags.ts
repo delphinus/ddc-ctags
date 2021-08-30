@@ -16,9 +16,7 @@ export class Source extends BaseSource {
     let hasJson = false
     if (hasExecutable) {
         const help = await this.runCmd(["ctags", "--help"]);
-        if (help.some((h) => /--output-format=.*json/.test(h))) {
-          hasJson = true
-        }
+        hasJson = help.some((h) => /--output-format=.*json/.test(h));
     }
     this.available = hasExecutable && hasJson;
   }
