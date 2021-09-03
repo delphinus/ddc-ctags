@@ -24,7 +24,8 @@ export class Source extends BaseSource {
   async gatherCandidates({
     denops,
   }: GatherCandidatesArguments): Promise<Candidate[]> {
-    if (!this.available) {
+    const isNamedBuf = (await fn.bufname(denops)) !== ""
+    if (!this.available || !isNamedBuf) {
       return [];
     }
     const file = await fn.expand(denops, '%:p') as string;
