@@ -12,6 +12,13 @@ interface Params {
   executable: string;
 }
 
+interface Ctag {
+  name: string;
+  kind?: string;
+  scope?: string;
+  scopeKind?: string;
+}
+
 export class Source extends BaseSource {
   private available = false;
   private defaultExecutable = "ctags";
@@ -51,18 +58,25 @@ export class Source extends BaseSource {
     const tags = await this.runCmd([
       sourceParams.executable as string,
       "--output-format=json",
-      "--fields={name}",
+      "--fields={name}{kind}{scope}{scopeKind}",
       "-u",
       file,
     ]);
     return tags.reduce<Candidate[]>((a, b) => {
       if (/^\{.*\}$/.test(b)) {
-        let decoded: { name: string; } | undefined
+        let c: Ctag | undefined
         try {
-          decoded = JSON.parse(b)
+          c = JSON.parse(b)
         } catch { }
-        if (decoded) {
-          a.push({ word: decoded.name })
+        if (c) {
+          const candidate: Candidate = {
+            word: c.name,
+            kind: c.kind,
+          }
+          if (c.scope && c.scopeKind) {
+            candidate.menu = `${c.scope} [${c.scopeKind}]`
+          }
+          a.push(candidate)
         }
       }
       return a
