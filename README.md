@@ -25,7 +25,7 @@ You need **Universal Ctags**, neither the original Ctags nor [Exuberant Ctags](h
 ## Configuration
 
 ```vim
-" Use around source.
+" Use ctags source.
 call ddc#custom#patch_global('sources', ['ctags'])
 
 " Change source options
