@@ -7,6 +7,7 @@ import {
   GatherCandidatesArguments,
   OnInitArguments,
 } from "https://deno.land/x/ddc_vim@v0.5.0/base/source.ts#^";
+import * as path from "https://deno.land/std@0.106.0/path/mod.ts#^";
 
 interface Params {
   executable: string;
@@ -54,9 +55,10 @@ export class Source extends BaseSource {
     if (!this.available || (await fn.bufname(denops)) === "") {
       return [];
     }
-    const cwd = (await fn.getcwd(denops)) as string
-    const files = await this.findFiles(denops, cwd)
     const file = await fn.expand(denops, '%:p') as string;
+    const cwd = (await fn.getcwd(denops)) as string
+    const exts = (await op.suffixesadd.get(denops)) || path.extname(file);
+    const files = await this.findFiles(denops, cwd, exts)
     const tags = await this.runCmd(denops, [
       sourceParams.executable as string,
       "--output-format=json",
@@ -64,6 +66,7 @@ export class Source extends BaseSource {
       "-u",
       ...(files.length > 0 ? files : [file]),
     ]);
+    await denops.cmd(`echomsg 'lines: ${tags.length}'`)
     return tags.reduce<Candidate[]>((a, b) => {
       if (/^\{.*\}$/.test(b)) {
         let c: Ctag | undefined
@@ -98,9 +101,12 @@ export class Source extends BaseSource {
     return new TextDecoder().decode(await p.output()).split(/\n/);
   }
 
-  private async findFiles(denops: Denops, cwd: string): Promise<string[]> {
-    const suffixesadd = await op.suffixesadd.get(denops);
-    const inameOptions = suffixesadd.split(/,/).reduce<string[]>((a, b) => {
+  private async findFiles(
+      denops: Denops,
+      cwd: string,
+      exts: string
+  ): Promise<string[]> {
+    const inameOptions = exts.split(/,/).reduce<string[]>((a, b) => {
       if (a.length > 0) {
         a.push("-o");
       }
