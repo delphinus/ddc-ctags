@@ -1,4 +1,4 @@
-import { Denops, fn } from "https://deno.land/x/ddc_vim@v0.5.0/deps.ts#^";
+import { Denops, fn, op } from "https://deno.land/x/ddc_vim@v0.5.0/deps.ts#^";
 import {
   BaseSource,
   Candidate,
@@ -35,7 +35,7 @@ export class Source extends BaseSource {
       await this.print_error(denops, "executable not found");
       return;
     }
-    const help = await this.runCmd([executable, "--help"]);
+    const help = await this.runCmd(denops, [executable, "--help"]);
     this.available = help.length > 0 &&
       /^Universal Ctags/.test(help[0]) &&
       help.some((h) => /--output-format=.*json/.test(h));
@@ -54,13 +54,15 @@ export class Source extends BaseSource {
     if (!this.available || (await fn.bufname(denops)) === "") {
       return [];
     }
+    const cwd = (await fn.getcwd(denops)) as string
+    const files = await this.findFiles(denops, cwd)
     const file = await fn.expand(denops, '%:p') as string;
-    const tags = await this.runCmd([
+    const tags = await this.runCmd(denops, [
       sourceParams.executable as string,
       "--output-format=json",
       "--fields={name}{kind}{scope}{scopeKind}",
       "-u",
-      file,
+      ...(files.length > 0 ? files : [file]),
     ]);
     return tags.reduce<Candidate[]>((a, b) => {
       if (/^\{.*\}$/.test(b)) {
@@ -89,10 +91,28 @@ export class Source extends BaseSource {
     }
   }
 
-  private async runCmd(cmd: string[]): Promise<string[]> {
+  private async runCmd(denops: Denops, cmd: string[]): Promise<string[]> {
+    await denops.cmd(`echomsg '${cmd.join(" ")}'`)
     const p = Deno.run({ cmd, stdout: "piped" });
     await p.status();
     return new TextDecoder().decode(await p.output()).split(/\n/);
+  }
+
+  private async findFiles(denops: Denops, cwd: string): Promise<string[]> {
+    const suffixesadd = await op.suffixesadd.get(denops);
+    const inameOptions = suffixesadd.split(/,/).reduce<string[]>((a, b) => {
+      if (a.length > 0) {
+        a.push("-o");
+      }
+      a.push("-iname", `*${b}`);
+      return a;
+    }, [])
+    const files = await this.runCmd(denops, [
+      "find", cwd, "-type", "f",
+      //"(", "!", "-regex", `/\..*`, ")",
+      "(", ...inameOptions, ")",
+    ]);
+    return files.filter((f) => f.length > 0)
   }
 
   private async print_error(denops: Denops, message: string): Promise<void> {
