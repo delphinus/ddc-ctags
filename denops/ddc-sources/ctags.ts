@@ -8,6 +8,8 @@ import {
   OnInitArguments,
 } from "https://deno.land/x/ddc_vim@v0.5.0/base/source.ts#^";
 import * as path from "https://deno.land/std@0.106.0/path/mod.ts#^";
+// TODO: use https://deno.land/x/context@v1.0.0
+import * as context from "https://raw.githubusercontent.com/delphinus/deno-context/master/context.ts";
 
 interface Params {
   executable: string;
@@ -18,6 +20,17 @@ interface Ctag {
   kind?: string;
   scope?: string;
   scopeKind?: string;
+}
+
+class FileFinder {
+  private promise?: Promise<string[]>;
+
+  constructor(
+    private ctx: context.Context,
+    public cwd: string,
+    public exts: string[],
+  ) {
+  }
 }
 
 export class Source extends BaseSource {
