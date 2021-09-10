@@ -24,10 +24,11 @@ export class Source extends BaseSource {
   private available = false;
   private defaultExecutable = "ctags";
 
-  async onInit({ denops , sourceParams }: OnInitArguments): Promise<void> {
+  async onInit({ denops, sourceParams }: OnInitArguments): Promise<void> {
     // old ddc.vim has no sourceParams here
-    const executable = sourceParams ?
-      sourceParams.executable : this.defaultExecutable;
+    const executable = sourceParams
+      ? sourceParams.executable
+      : this.defaultExecutable;
     if (typeof executable !== "string") {
       await this.print_error(denops, "executable should be a string");
       return;
@@ -43,22 +44,22 @@ export class Source extends BaseSource {
     if (!this.available) {
       await this.print_error(
         denops,
-        "executable seem not to be the latest Universal Ctags."
+        "executable seem not to be the latest Universal Ctags.",
       );
     }
   }
 
   async gatherCandidates({
     denops,
-    sourceParams
+    sourceParams,
   }: GatherCandidatesArguments): Promise<Candidate[]> {
     if (!this.available || (await fn.bufname(denops)) === "") {
       return [];
     }
-    const file = await fn.expand(denops, '%:p') as string;
-    const cwd = (await fn.getcwd(denops)) as string
+    const file = await fn.expand(denops, "%:p") as string;
+    const cwd = (await fn.getcwd(denops)) as string;
     const exts = (await op.suffixesadd.get(denops)) || path.extname(file);
-    const files = await this.findFiles(denops, cwd, exts)
+    const files = await this.findFiles(denops, cwd, exts);
     const tags = await this.runCmd(denops, [
       sourceParams.executable as string,
       "--output-format=json",
@@ -66,45 +67,45 @@ export class Source extends BaseSource {
       "-u",
       ...(files.length > 0 ? files : [file]),
     ]);
-    await denops.cmd(`echomsg 'lines: ${tags.length}'`)
+    await denops.cmd(`echomsg 'lines: ${tags.length}'`);
     return tags.reduce<Candidate[]>((a, b) => {
       if (/^\{.*\}$/.test(b)) {
-        let c: Ctag | undefined
+        let c: Ctag | undefined;
         try {
-          c = JSON.parse(b)
-        } catch { }
+          c = JSON.parse(b);
+        } catch {}
         if (c) {
           const candidate: Candidate = {
             word: c.name,
             kind: c.kind,
-          }
+          };
           if (c.scope && c.scopeKind) {
-            candidate.menu = `${c.scope} [${c.scopeKind}]`
+            candidate.menu = `${c.scope} [${c.scopeKind}]`;
           }
-          a.push(candidate)
+          a.push(candidate);
         }
       }
-      return a
+      return a;
     }, []);
   }
 
   params(): Record<string, unknown> {
     return {
       executable: this.defaultExecutable,
-    }
+    };
   }
 
   private async runCmd(denops: Denops, cmd: string[]): Promise<string[]> {
-    await denops.cmd(`echomsg '${cmd.join(" ")}'`)
+    await denops.cmd(`echomsg '${cmd.join(" ")}'`);
     const p = Deno.run({ cmd, stdout: "piped" });
     await p.status();
     return new TextDecoder().decode(await p.output()).split(/\n/);
   }
 
   private async findFiles(
-      denops: Denops,
-      cwd: string,
-      exts: string
+    denops: Denops,
+    cwd: string,
+    exts: string,
   ): Promise<string[]> {
     const inameOptions = exts.split(/,/).reduce<string[]>((a, b) => {
       if (a.length > 0) {
@@ -112,16 +113,21 @@ export class Source extends BaseSource {
       }
       a.push("-iname", `*${b}`);
       return a;
-    }, [])
+    }, []);
     const files = await this.runCmd(denops, [
-      "find", cwd, "-type", "f",
+      "find",
+      cwd,
+      "-type",
+      "f",
       //"(", "!", "-regex", `/\..*`, ")",
-      "(", ...inameOptions, ")",
+      "(",
+      ...inameOptions,
+      ")",
     ]);
-    return files.filter((f) => f.length > 0)
+    return files.filter((f) => f.length > 0);
   }
 
   private async print_error(denops: Denops, message: string): Promise<void> {
-    await denops.call("ddc#util#print_error", message, "ddc-ctags")
+    await denops.call("ddc#util#print_error", message, "ddc-ctags");
   }
 }
