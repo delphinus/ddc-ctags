@@ -1,16 +1,16 @@
-import { Denops, fn } from "https://deno.land/x/ddc_vim@v0.5.0/deps.ts#^";
+import { Denops, fn } from "https://deno.land/x/ddc_vim@v0.13.0/deps.ts#^";
 import {
   BaseSource,
   Candidate,
-} from "https://deno.land/x/ddc_vim@v0.5.0/types.ts#^";
+} from "https://deno.land/x/ddc_vim@v0.13.0/types.ts#^";
 import {
   GatherCandidatesArguments,
   OnInitArguments,
-} from "https://deno.land/x/ddc_vim@v0.5.0/base/source.ts#^";
+} from "https://deno.land/x/ddc_vim@v0.13.0/base/source.ts#^";
 
-interface Params {
+type Params = {
   executable: string;
-}
+};
 
 interface Ctag {
   name: string;
@@ -19,11 +19,13 @@ interface Ctag {
   scopeKind?: string;
 }
 
-export class Source extends BaseSource {
+export class Source extends BaseSource<Params> {
   private available = false;
   private defaultExecutable = "ctags";
 
-  async onInit({ denops, sourceParams }: OnInitArguments): Promise<void> {
+  async onInit(
+    { denops, sourceParams }: OnInitArguments<Params>,
+  ): Promise<void> {
     // old ddc.vim has no sourceParams here
     const executable = sourceParams
       ? sourceParams.executable
@@ -51,7 +53,7 @@ export class Source extends BaseSource {
   async gatherCandidates({
     denops,
     sourceParams,
-  }: GatherCandidatesArguments): Promise<Candidate[]> {
+  }: GatherCandidatesArguments<Params>): Promise<Candidate[]> {
     if (!this.available || (await fn.bufname(denops)) === "") {
       return [];
     }
@@ -86,7 +88,7 @@ export class Source extends BaseSource {
     }, []);
   }
 
-  params(): Record<string, unknown> {
+  params(): Params {
     return {
       executable: this.defaultExecutable,
     };
