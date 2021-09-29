@@ -54,10 +54,13 @@ export class Source extends BaseSource<Params> {
     denops,
     sourceParams,
   }: GatherCandidatesArguments<Params>): Promise<Candidate[]> {
-    if (!this.available || (await fn.bufname(denops)) === "") {
+    if (!this.available) {
       return [];
     }
     const file = await fn.expand(denops, "%:p") as string;
+    if ((await fn.filereadable(denops, file)) === 0) {
+      return [];
+    }
     const tags = await this.runCmd([
       sourceParams.executable as string,
       "--output-format=json",
