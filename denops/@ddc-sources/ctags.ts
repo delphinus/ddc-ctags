@@ -1,12 +1,12 @@
-import { Denops, fn } from "https://deno.land/x/ddc_vim@v0.14.0/deps.ts#^";
+import { Denops, fn } from "https://deno.land/x/ddc_vim@v4.0.5/deps.ts#^";
 import {
   BaseSource,
-  Candidate,
-} from "https://deno.land/x/ddc_vim@v0.14.0/types.ts#^";
+  Item,
+} from "https://deno.land/x/ddc_vim@v4.0.5/types.ts#^";
 import {
-  GatherCandidatesArguments,
+  GatherArguments,
   OnInitArguments,
-} from "https://deno.land/x/ddc_vim@v0.14.0/base/source.ts#^";
+} from "https://deno.land/x/ddc_vim@v4.0.5/base/source.ts#^";
 
 type Params = {
   executable: string;
@@ -50,10 +50,10 @@ export class Source extends BaseSource<Params> {
     }
   }
 
-  async gatherCandidates({
+  async gather({
     denops,
     sourceParams,
-  }: GatherCandidatesArguments<Params>): Promise<Candidate[]> {
+  }: GatherArguments<Params>): Promise<Item[]> {
     if (!this.available) {
       return [];
     }
@@ -68,7 +68,7 @@ export class Source extends BaseSource<Params> {
       "-u",
       file,
     ]);
-    return tags.reduce<Candidate[]>((a, b) => {
+    return tags.reduce<Item[]>((a, b) => {
       if (/^\{.*\}$/.test(b)) {
         let c: Ctag | undefined;
         try {
@@ -77,14 +77,14 @@ export class Source extends BaseSource<Params> {
           //
         }
         if (c) {
-          const candidate: Candidate = {
+          const item: Item = {
             word: c.name,
             kind: c.kind,
           };
           if (c.scope && c.scopeKind) {
-            candidate.menu = `${c.scope} [${c.scopeKind}]`;
+            item.menu = `${c.scope} [${c.scopeKind}]`;
           }
-          a.push(candidate);
+          a.push(item);
         }
       }
       return a;
@@ -98,10 +98,17 @@ export class Source extends BaseSource<Params> {
   }
 
   private async runCmd(cmd: string[]): Promise<string[]> {
-    const p = Deno.run({ cmd, stdout: "piped", stderr: "null" });
-    const [_, out] = await Promise.all([p.status(), p.output()]);
-    p.close();
-    return new TextDecoder().decode(out).split(/\n/);
+    const proc = new Deno.Command(
+      cmd[0],
+      {
+        args: cmd.slice(1),
+        stdout: "piped",
+        stderr: "null",
+      },
+    );
+
+    const { stdout } = await proc.output();
+    return new TextDecoder().decode(stdout).split(/\n/);
   }
 
   private async print_error(denops: Denops, message: string): Promise<void> {
